@@ -36,7 +36,7 @@ PARAMETERS
 }
 
 resource "azurerm_policy_assignment" "example" {
-  name                 = "terragoat-policy-assignment-${var.environment}"
+  name                 = "tg-policy-assignment-${var.environment}"
   scope                = "/subscriptions/${data.azurerm_client_config.current.subscription_id}"
   policy_definition_id = azurerm_policy_definition.policy-res.id
   description          = "Policy Assignment created via an Acceptance Test"

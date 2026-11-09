@@ -106,40 +106,40 @@ resource azurerm_network_security_group "bad_sg" {
   }
 }
 
-resource azurerm_network_watcher "network_watcher" {
-  location            = var.location
-  name                = "terragoat-network-watcher-${var.environment}"
-  resource_group_name = azurerm_resource_group.example.name
-  tags = {
-    git_commit           = "898d5beaec7ffdef6df0d7abecff407362e2a74e"
-    git_file             = "terraform/azure/networking.tf"
-    git_last_modified_at = "2020-06-17 12:59:55"
-    git_last_modified_by = "nimrodkor@gmail.com"
-    git_modifiers        = "nimrodkor"
-    git_org              = "bridgecrewio"
-    git_repo             = "terragoat"
-    yor_trace            = "3da368fc-723f-43d2-8e82-08dcc91e5094"
-  }
-}
-
-resource azurerm_network_watcher_flow_log "flow_log" {
-  enabled                   = false
-  network_security_group_id = azurerm_network_security_group.bad_sg.id
-  network_watcher_name      = azurerm_network_watcher.network_watcher.name
-  resource_group_name       = azurerm_resource_group.example.name
-  storage_account_id        = azurerm_storage_account.example.id
-  retention_policy {
-    enabled = false
-    days    = 10
-  }
-  tags = {
-    git_commit           = "898d5beaec7ffdef6df0d7abecff407362e2a74e"
-    git_file             = "terraform/azure/networking.tf"
-    git_last_modified_at = "2020-06-17 12:59:55"
-    git_last_modified_by = "nimrodkor@gmail.com"
-    git_modifiers        = "nimrodkor"
-    git_org              = "bridgecrewio"
-    git_repo             = "terragoat"
-    yor_trace            = "33a7212e-7f1a-49fc-af73-8e525c5546ec"
-  }
-}
+# resource azurerm_network_watcher "network_watcher" {
+#   location            = var.location
+#   name                = "terragoat-network-watcher-${var.environment}"
+#   resource_group_name = azurerm_resource_group.example.name
+#   tags = {
+#     git_commit           = "898d5beaec7ffdef6df0d7abecff407362e2a74e"
+#     git_file             = "terraform/azure/networking.tf"
+#     git_last_modified_at = "2020-06-17 12:59:55"
+#     git_last_modified_by = "nimrodkor@gmail.com"
+#     git_modifiers        = "nimrodkor"
+#     git_org              = "bridgecrewio"
+#     git_repo             = "terragoat"
+#     yor_trace            = "3da368fc-723f-43d2-8e82-08dcc91e5094"
+#   }
+# }
+# 
+# resource azurerm_network_watcher_flow_log "flow_log" {
+#   enabled                   = false
+#   network_security_group_id = azurerm_network_security_group.bad_sg.id
+#   network_watcher_name      = azurerm_network_watcher.network_watcher.name
+#   resource_group_name       = azurerm_resource_group.example.name
+#   storage_account_id        = azurerm_storage_account.example.id
+#   retention_policy {
+#     enabled = false
+#     days    = 10
+#   }
+#   tags = {
+#     git_commit           = "898d5beaec7ffdef6df0d7abecff407362e2a74e"
+#     git_file             = "terraform/azure/networking.tf"
+#     git_last_modified_at = "2020-06-17 12:59:55"
+#     git_last_modified_by = "nimrodkor@gmail.com"
+#     git_modifiers        = "nimrodkor"
+#     git_org              = "bridgecrewio"
+#     git_repo             = "terragoat"
+#     yor_trace            = "33a7212e-7f1a-49fc-af73-8e525c5546ec"
+#   }
+# }

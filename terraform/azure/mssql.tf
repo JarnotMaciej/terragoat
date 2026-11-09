@@ -1,5 +1,5 @@
 resource "azurerm_storage_account" "security_storage_account" {
-  name                      = "securitystorageaccount-${var.environment}${random_integer.rnd_int.result}"
+  name                      = "secsa${var.environment}${random_integer.rnd_int.result}"
   resource_group_name       = azurerm_resource_group.example.name
   location                  = azurerm_resource_group.example.location
   account_tier              = "Standard"
@@ -24,6 +24,7 @@ resource "azurerm_mssql_server" "mssql1" {
   version                      = "12.0"
   administrator_login          = "missadministrator"
   administrator_login_password = "AdminPassword123!"
+  minimum_tls_version          = "1.2"
   tags = {
     git_commit           = "c6f8caa51942284d02465518822685897ad90141"
     git_file             = "terraform/azure/mssql.tf"
@@ -43,6 +44,7 @@ resource "azurerm_mssql_server" "mssql2" {
   version                      = "12.0"
   administrator_login          = "missadministrator"
   administrator_login_password = "AdminPassword123!"
+  minimum_tls_version          = "1.2"
   tags = {
     git_commit           = "c6f8caa51942284d02465518822685897ad90141"
     git_file             = "terraform/azure/mssql.tf"
@@ -62,6 +64,7 @@ resource "azurerm_mssql_server" "mssql3" {
   version                      = "12.0"
   administrator_login          = "missadministrator"
   administrator_login_password = "AdminPassword123!"
+  minimum_tls_version          = "1.2"
   tags = {
     git_commit           = "c6f8caa51942284d02465518822685897ad90141"
     git_file             = "terraform/azure/mssql.tf"
@@ -81,6 +84,7 @@ resource "azurerm_mssql_server" "mssql4" {
   version                      = "12.0"
   administrator_login          = "missadministrator"
   administrator_login_password = "AdminPassword123!"
+  minimum_tls_version          = "1.2"
   tags = {
     git_commit           = "c6f8caa51942284d02465518822685897ad90141"
     git_file             = "terraform/azure/mssql.tf"
@@ -100,6 +104,7 @@ resource "azurerm_mssql_server" "mssql5" {
   version                      = "12.0"
   administrator_login          = "missadministrator"
   administrator_login_password = "AdminPassword123!"
+  minimum_tls_version          = "1.2"
   tags = {
     git_commit           = "c6f8caa51942284d02465518822685897ad90141"
     git_file             = "terraform/azure/mssql.tf"
@@ -119,6 +124,7 @@ resource "azurerm_mssql_server" "mssql6" {
   version                      = "12.0"
   administrator_login          = "missadministrator"
   administrator_login_password = "AdminPassword123!"
+  minimum_tls_version          = "1.2"
   tags = {
     git_commit           = "c6f8caa51942284d02465518822685897ad90141"
     git_file             = "terraform/azure/mssql.tf"
@@ -138,6 +144,7 @@ resource "azurerm_mssql_server" "mssql7" {
   version                      = "12.0"
   administrator_login          = "missadministrator"
   administrator_login_password = "AdminPassword123!"
+  minimum_tls_version          = "1.2"
   tags = {
     git_commit           = "c6f8caa51942284d02465518822685897ad90141"
     git_file             = "terraform/azure/mssql.tf"
@@ -154,8 +161,8 @@ resource "azurerm_mssql_server_security_alert_policy" "alertpolicy1" {
   resource_group_name        = azurerm_resource_group.example.name
   server_name                = azurerm_mssql_server.mssql1.name
   state                      = "Enabled"
-  storage_endpoint           = azurerm_storage_account.security_storage_account.primary_blob_endpoint
-  storage_account_access_key = azurerm_storage_account.security_storage_account.primary_access_key
+#   storage_endpoint           = azurerm_storage_account.security_storage_account.primary_blob_endpoint
+#   storage_account_access_key = azurerm_storage_account.security_storage_account.primary_access_key
   disabled_alerts = [
     "Sql_Injection",
     "Data_Exfiltration"
@@ -168,8 +175,8 @@ resource "azurerm_mssql_server_security_alert_policy" "alertpolicy2" {
   resource_group_name        = azurerm_resource_group.example.name
   server_name                = azurerm_mssql_server.mssql2.name
   state                      = "Enabled"
-  storage_endpoint           = azurerm_storage_account.security_storage_account.primary_blob_endpoint
-  storage_account_access_key = azurerm_storage_account.security_storage_account.primary_access_key
+#   storage_endpoint           = azurerm_storage_account.security_storage_account.primary_blob_endpoint
+#   storage_account_access_key = azurerm_storage_account.security_storage_account.primary_access_key
   disabled_alerts = [
     "Sql_Injection",
     "Data_Exfiltration"
@@ -182,8 +189,8 @@ resource "azurerm_mssql_server_security_alert_policy" "alertpolicy3" {
   resource_group_name        = azurerm_resource_group.example.name
   server_name                = azurerm_mssql_server.mssql3.name
   state                      = "Enabled"
-  storage_endpoint           = azurerm_storage_account.security_storage_account.primary_blob_endpoint
-  storage_account_access_key = azurerm_storage_account.security_storage_account.primary_access_key
+#   storage_endpoint           = azurerm_storage_account.security_storage_account.primary_blob_endpoint
+#   storage_account_access_key = azurerm_storage_account.security_storage_account.primary_access_key
   disabled_alerts = [
     "Sql_Injection",
     "Data_Exfiltration"
@@ -196,8 +203,8 @@ resource "azurerm_mssql_server_security_alert_policy" "alertpolicy4" {
   resource_group_name        = azurerm_resource_group.example.name
   server_name                = azurerm_mssql_server.mssql4.name
   state                      = "Enabled"
-  storage_endpoint           = azurerm_storage_account.security_storage_account.primary_blob_endpoint
-  storage_account_access_key = azurerm_storage_account.security_storage_account.primary_access_key
+#   storage_endpoint           = azurerm_storage_account.security_storage_account.primary_blob_endpoint
+#   storage_account_access_key = azurerm_storage_account.security_storage_account.primary_access_key
   disabled_alerts = [
     "Sql_Injection",
     "Data_Exfiltration"
@@ -210,8 +217,8 @@ resource "azurerm_mssql_server_security_alert_policy" "alertpolicy5" {
   resource_group_name        = azurerm_resource_group.example.name
   server_name                = azurerm_mssql_server.mssql5.name
   state                      = "Enabled"
-  storage_endpoint           = azurerm_storage_account.security_storage_account.primary_blob_endpoint
-  storage_account_access_key = azurerm_storage_account.security_storage_account.primary_access_key
+#   storage_endpoint           = azurerm_storage_account.security_storage_account.primary_blob_endpoint
+#   storage_account_access_key = azurerm_storage_account.security_storage_account.primary_access_key
   disabled_alerts = [
     "Sql_Injection",
     "Data_Exfiltration"
@@ -223,8 +230,8 @@ resource "azurerm_mssql_server_security_alert_policy" "alertpolicy6" {
   resource_group_name        = azurerm_resource_group.example.name
   server_name                = azurerm_mssql_server.mssql6.name
   state                      = "Enabled"
-  storage_endpoint           = azurerm_storage_account.security_storage_account.primary_blob_endpoint
-  storage_account_access_key = azurerm_storage_account.security_storage_account.primary_access_key
+#   storage_endpoint           = azurerm_storage_account.security_storage_account.primary_blob_endpoint
+#   storage_account_access_key = azurerm_storage_account.security_storage_account.primary_access_key
   disabled_alerts = [
     "Sql_Injection",
     "Data_Exfiltration"
@@ -237,8 +244,8 @@ resource "azurerm_mssql_server_security_alert_policy" "alertpolicy7" {
   resource_group_name        = azurerm_resource_group.example.name
   server_name                = azurerm_mssql_server.mssql7.name
   state                      = "Enabled"
-  storage_endpoint           = azurerm_storage_account.security_storage_account.primary_blob_endpoint
-  storage_account_access_key = azurerm_storage_account.security_storage_account.primary_access_key
+#   storage_endpoint           = azurerm_storage_account.security_storage_account.primary_blob_endpoint
+#   storage_account_access_key = azurerm_storage_account.security_storage_account.primary_access_key
   disabled_alerts = [
     "Sql_Injection",
     "Data_Exfiltration"

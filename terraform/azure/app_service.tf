@@ -1,11 +1,11 @@
 resource azurerm_app_service_plan "example" {
-  name                = "terragoat-app-service-plan-${var.environment}"
+  name                = "tg-app-service-plan-${var.environment}"
   location            = azurerm_resource_group.example.location
   resource_group_name = azurerm_resource_group.example.name
 
   sku {
-    tier = "Dynamic"
-    size = "S1"
+    tier = "Basic"
+    size = "B1"
   }
   tags = {
     git_commit           = "898d5beaec7ffdef6df0d7abecff407362e2a74e"
@@ -22,7 +22,7 @@ resource azurerm_app_service_plan "example" {
 resource azurerm_app_service "app-service1" {
   app_service_plan_id = azurerm_app_service_plan.example.id
   location            = var.location
-  name                = "terragoat-app-service-${var.environment}${random_integer.rnd_int.result}"
+  name                = "tg-app-service-${var.environment}${random_integer.rnd_int.result}"
   resource_group_name = azurerm_resource_group.example.name
   https_only          = false
   site_config {
@@ -43,7 +43,7 @@ resource azurerm_app_service "app-service1" {
 resource azurerm_app_service "app-service2" {
   app_service_plan_id = azurerm_app_service_plan.example.id
   location            = var.location
-  name                = "terragoat-app-service-${var.environment}${random_integer.rnd_int.result}"
+  name                = "tg-app-v5-2-${var.environment}${random_integer.rnd_int.result}"
   resource_group_name = azurerm_resource_group.example.name
   https_only          = true
 

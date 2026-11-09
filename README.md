@@ -49,89 +49,16 @@ To prevent vulnerable infrastructure from arriving to production see: [Bridgecre
 
 ## Getting started
 
-### AWS Setup
+```sh
+export ARM_SUBSCRIPTION_ID="6b0a81aa-507a-4a82-bab2-473e980d2ed6"
+export TERRAGOAT_RESOURCE_GROUP="TerraGoatRG"
+export TERRAGOAT_STATE_STORAGE_ACCOUNT=$(az storage account list --resource-group $TERRAGOAT_RESOURCE_GROUP --query "[0].name" -o tsv)
+export TERRAGOAT_STATE_CONTAINER="mydevsecops"
+terraform init -reconfigure -backend-config="resource_group_name=$TERRAGOAT_RESOURCE_GROUP" -backend-config="storage_account_name=$TERRAGOAT_STATE_STORAGE_ACCOUNT" -backend-config="container_name=$TERRAGOAT_STATE_CONTAINER" -backend-config="key=v2.terraform.tfstate"
 
-#### Installation (AWS)
+# Pobranie Twojego prawdziwego identyfikatora konta
+REAL_OID=$(az ad signed-in-user show --query id -o tsv)
 
-You can deploy multiple TerraGoat stacks in a single AWS account using the parameter `TF_VAR_environment`.
-
-#### Create an S3 Bucket backend to keep Terraform state
-
-```bash
-export TERRAGOAT_STATE_BUCKET="mydevsecops-bucket"
-export TF_VAR_company_name=acme
-export TF_VAR_environment=mydevsecops
-export TF_VAR_region="us-west-2"
-
-aws s3api create-bucket --bucket $TERRAGOAT_STATE_BUCKET \
-    --region $TF_VAR_region --create-bucket-configuration LocationConstraint=$TF_VAR_region
-
-# Enable versioning
-aws s3api put-bucket-versioning --bucket $TERRAGOAT_STATE_BUCKET --versioning-configuration Status=Enabled
-
-# Enable encryption
-aws s3api put-bucket-encryption --bucket $TERRAGOAT_STATE_BUCKET --server-side-encryption-configuration '{
-  "Rules": [
-    {
-      "ApplyServerSideEncryptionByDefault": {
-        "SSEAlgorithm": "aws:kms"
-      }
-    }
-  ]
-}'
-```
-
-#### Apply TerraGoat (AWS)
-
-```bash
-cd terraform/aws/
-terraform init \
--backend-config="bucket=$TERRAGOAT_STATE_BUCKET" \
--backend-config="key=$TF_VAR_company_name-$TF_VAR_environment.tfstate" \
--backend-config="region=$TF_VAR_region"
-
-terraform apply
-```
-
-#### Remove TerraGoat (AWS)
-
-```bash
-terraform destroy
-```
-
-#### Creating multiple TerraGoat AWS stacks
-
-```bash
-cd terraform/aws/
-export TERRAGOAT_ENV=$TF_VAR_environment
-export TERRAGOAT_STACKS_NUM=5
-for i in $(seq 1 $TERRAGOAT_STACKS_NUM)
-do
-    export TF_VAR_environment=$TERRAGOAT_ENV$i
-    terraform init \
-    -backend-config="bucket=$TERRAGOAT_STATE_BUCKET" \
-    -backend-config="key=$TF_VAR_company_name-$TF_VAR_environment.tfstate" \
-    -backend-config="region=$TF_VAR_region"
-
-    terraform apply -auto-approve
-done
-```
-
-#### Deleting multiple TerraGoat stacks (AWS)
-
-```bash
-cd terraform/aws/
-export TF_VAR_environment = $TERRAGOAT_ENV
-for i in $(seq 1 $TERRAGOAT_STACKS_NUM)
-do
-    export TF_VAR_environment=$TERRAGOAT_ENV$i
-    terraform init \
-    -backend-config="bucket=$TERRAGOAT_STATE_BUCKET" \
-    -backend-config="key=$TF_VAR_company_name-$TF_VAR_environment.tfstate" \
-    -backend-config="region=$TF_VAR_region"
-
-    terraform destroy -auto-approve
-done
 ```
 
 ### Azure Setup
@@ -178,57 +105,21 @@ terraform apply
 
 ```bash
 terraform destroy
+
+terraform destroy -auto-approve
 ```
 
-### GCP Setup
-
-#### Installation (GCP)
-
-You can deploy multiple TerraGoat stacks in a single GCP project using the parameter `TF_VAR_environment`.
-
-#### Create a GCS backend to keep Terraform state
-
-To use terraform, a Service Account and matching set of credentials are required.
-If they do not exist, they must be manually created for the relevant project.
-To create the Service Account:
-1. Sign into your GCP project, go to `IAM` > `Service Accounts`.
-2. Click the `CREATE SERVICE ACCOUNT`.
-3. Give a name to your service account (for example - `terragoat`) and click `CREATE`.
-4. Grant the Service Account the `Project` > `Editor` role and click `CONTINUE`.
-5. Click `DONE`.
-
-To create the credentials:
-1. Sign into your GCP project, go to `IAM` > `Service Accounts` and click on the relevant Service Account.
-2. Click `ADD KEY` > `Create new key` > `JSON` and click `CREATE`. This will create a `.json` file and download it to your computer.
-
-We recommend saving the key with a nicer name than the auto-generated one (i.e. `terragoat_credentials.json`), and storing the resulting JSON file inside `terraform/gcp` directory of terragoat.
-Once the credentials are set up, create the BE configuration as follows:
+#### Remove non-standard rules
 
 ```bash
-export TF_VAR_environment="dev"
-export TF_TERRAGOAT_STATE_BUCKET=remote-state-bucket-terragoat
-export TF_VAR_credentials_path=<PATH_TO_CREDNETIALS_FILE> # example: export TF_VAR_credentials_path=terragoat_credentials.json
-export TF_VAR_project=<YOUR_PROJECT_NAME_HERE>
+echo "--- NIESTANDARDOWE ROLE ---"
+az role definition list --custom-role-only --query "[].{Name:roleName, ID:name}" -o table
 
-# Create storage bucket
-gsutil mb gs://${TF_TERRAGOAT_STATE_BUCKET}
-```
+echo "--- NIESTANDARDOWE POLITYKI ---"
+az policy definition list --query "[?policyType=='Custom'].{Name:displayName, ID:name}" -o table
 
-#### Apply TerraGoat (GCP)
-
-```bash
-cd terraform/gcp/
-terraform init -reconfigure -backend-config="bucket=$TF_TERRAGOAT_STATE_BUCKET" \
-    -backend-config "credentials=$TF_VAR_credentials_path" \
-    -backend-config "prefix=terragoat/${TF_VAR_environment}"
-
-terraform apply
-```
-
-#### Remove TerraGoat (GCP)
-
-```bash
-terraform destroy
+echo "--- PRZYPISANIA POLITYK ---"
+az policy assignment list --query "[].{Name:displayName, ID:name}" -o table
 ```
 
 ## Bridgecrew's IaC herd of goats

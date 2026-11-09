@@ -6,10 +6,15 @@ variable "subscription_id" {
 
 variable "location" {
   type    = string
-  default = "East US"
+  default = "swedencentral"
 }
 
 variable "environment" {
   default     = "dev"
   description = "Must be all lowercase letters or numbers"
+}
+
+variable "object_id" {
+  type        = string
+  description = "User Object ID for Key Vault"
 }

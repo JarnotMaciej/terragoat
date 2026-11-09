@@ -1,0 +1,756 @@
+diff --git a/.gitignore b/.gitignore
+index 0a0ca4c..be11e06 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -37,3 +37,5 @@ credentials.json
+ .DS_Store
+ twistcli
+ 
++terraform.tfvars
++*.tf.disabled
+diff --git a/README.md b/README.md
+index e003407..6484c7f 100644
+--- a/README.md
++++ b/README.md
+@@ -49,89 +49,16 @@ To prevent vulnerable infrastructure from arriving to production see: [Bridgecre
+ 
+ ## Getting started
+ 
+-### AWS Setup
+-
+-#### Installation (AWS)
+-
+-You can deploy multiple TerraGoat stacks in a single AWS account using the parameter `TF_VAR_environment`.
+-
+-#### Create an S3 Bucket backend to keep Terraform state
+-
+-```bash
+-export TERRAGOAT_STATE_BUCKET="mydevsecops-bucket"
+-export TF_VAR_company_name=acme
+-export TF_VAR_environment=mydevsecops
+-export TF_VAR_region="us-west-2"
+-
+-aws s3api create-bucket --bucket $TERRAGOAT_STATE_BUCKET \
+-    --region $TF_VAR_region --create-bucket-configuration LocationConstraint=$TF_VAR_region
+-
+-# Enable versioning
+-aws s3api put-bucket-versioning --bucket $TERRAGOAT_STATE_BUCKET --versioning-configuration Status=Enabled
+-
+-# Enable encryption
+-aws s3api put-bucket-encryption --bucket $TERRAGOAT_STATE_BUCKET --server-side-encryption-configuration '{
+-  "Rules": [
+-    {
+-      "ApplyServerSideEncryptionByDefault": {
+-        "SSEAlgorithm": "aws:kms"
+-      }
+-    }
+-  ]
+-}'
+-```
+-
+-#### Apply TerraGoat (AWS)
+-
+-```bash
+-cd terraform/aws/
+-terraform init \
+--backend-config="bucket=$TERRAGOAT_STATE_BUCKET" \
+--backend-config="key=$TF_VAR_company_name-$TF_VAR_environment.tfstate" \
+--backend-config="region=$TF_VAR_region"
+-
+-terraform apply
+-```
+-
+-#### Remove TerraGoat (AWS)
+-
+-```bash
+-terraform destroy
+-```
+-
+-#### Creating multiple TerraGoat AWS stacks
+-
+-```bash
+-cd terraform/aws/
+-export TERRAGOAT_ENV=$TF_VAR_environment
+-export TERRAGOAT_STACKS_NUM=5
+-for i in $(seq 1 $TERRAGOAT_STACKS_NUM)
+-do
+-    export TF_VAR_environment=$TERRAGOAT_ENV$i
+-    terraform init \
+-    -backend-config="bucket=$TERRAGOAT_STATE_BUCKET" \
+-    -backend-config="key=$TF_VAR_company_name-$TF_VAR_environment.tfstate" \
+-    -backend-config="region=$TF_VAR_region"
+-
+-    terraform apply -auto-approve
+-done
+-```
++```sh
++export ARM_SUBSCRIPTION_ID="6b0a81aa-507a-4a82-bab2-473e980d2ed6"
++export TERRAGOAT_RESOURCE_GROUP="TerraGoatRG"
++export TERRAGOAT_STATE_STORAGE_ACCOUNT=$(az storage account list --resource-group $TERRAGOAT_RESOURCE_GROUP --query "[0].name" -o tsv)
++export TERRAGOAT_STATE_CONTAINER="mydevsecops"
++terraform init -reconfigure -backend-config="resource_group_name=$TERRAGOAT_RESOURCE_GROUP" -backend-config="storage_account_name=$TERRAGOAT_STATE_STORAGE_ACCOUNT" -backend-config="container_name=$TERRAGOAT_STATE_CONTAINER" -backend-config="key=v2.terraform.tfstate"
+ 
+-#### Deleting multiple TerraGoat stacks (AWS)
++# Pobranie Twojego prawdziwego identyfikatora konta
++REAL_OID=$(az ad signed-in-user show --query id -o tsv)
+ 
+-```bash
+-cd terraform/aws/
+-export TF_VAR_environment = $TERRAGOAT_ENV
+-for i in $(seq 1 $TERRAGOAT_STACKS_NUM)
+-do
+-    export TF_VAR_environment=$TERRAGOAT_ENV$i
+-    terraform init \
+-    -backend-config="bucket=$TERRAGOAT_STATE_BUCKET" \
+-    -backend-config="key=$TF_VAR_company_name-$TF_VAR_environment.tfstate" \
+-    -backend-config="region=$TF_VAR_region"
+-
+-    terraform destroy -auto-approve
+-done
+ ```
+ 
+ ### Azure Setup
+@@ -178,57 +105,21 @@ terraform apply
+ 
+ ```bash
+ terraform destroy
+-```
+-
+-### GCP Setup
+-
+-#### Installation (GCP)
+-
+-You can deploy multiple TerraGoat stacks in a single GCP project using the parameter `TF_VAR_environment`.
+-
+-#### Create a GCS backend to keep Terraform state
+-
+-To use terraform, a Service Account and matching set of credentials are required.
+-If they do not exist, they must be manually created for the relevant project.
+-To create the Service Account:
+-1. Sign into your GCP project, go to `IAM` > `Service Accounts`.
+-2. Click the `CREATE SERVICE ACCOUNT`.
+-3. Give a name to your service account (for example - `terragoat`) and click `CREATE`.
+-4. Grant the Service Account the `Project` > `Editor` role and click `CONTINUE`.
+-5. Click `DONE`.
+ 
+-To create the credentials:
+-1. Sign into your GCP project, go to `IAM` > `Service Accounts` and click on the relevant Service Account.
+-2. Click `ADD KEY` > `Create new key` > `JSON` and click `CREATE`. This will create a `.json` file and download it to your computer.
+-
+-We recommend saving the key with a nicer name than the auto-generated one (i.e. `terragoat_credentials.json`), and storing the resulting JSON file inside `terraform/gcp` directory of terragoat.
+-Once the credentials are set up, create the BE configuration as follows:
+-
+-```bash
+-export TF_VAR_environment="dev"
+-export TF_TERRAGOAT_STATE_BUCKET=remote-state-bucket-terragoat
+-export TF_VAR_credentials_path=<PATH_TO_CREDNETIALS_FILE> # example: export TF_VAR_credentials_path=terragoat_credentials.json
+-export TF_VAR_project=<YOUR_PROJECT_NAME_HERE>
+-
+-# Create storage bucket
+-gsutil mb gs://${TF_TERRAGOAT_STATE_BUCKET}
++terraform destroy -auto-approve
+ ```
+ 
+-#### Apply TerraGoat (GCP)
++#### Remove non-standard rules
+ 
+ ```bash
+-cd terraform/gcp/
+-terraform init -reconfigure -backend-config="bucket=$TF_TERRAGOAT_STATE_BUCKET" \
+-    -backend-config "credentials=$TF_VAR_credentials_path" \
+-    -backend-config "prefix=terragoat/${TF_VAR_environment}"
++echo "--- NIESTANDARDOWE ROLE ---"
++az role definition list --custom-role-only --query "[].{Name:roleName, ID:name}" -o table
+ 
+-terraform apply
+-```
+-
+-#### Remove TerraGoat (GCP)
++echo "--- NIESTANDARDOWE POLITYKI ---"
++az policy definition list --query "[?policyType=='Custom'].{Name:displayName, ID:name}" -o table
+ 
+-```bash
+-terraform destroy
++echo "--- PRZYPISANIA POLITYK ---"
++az policy assignment list --query "[].{Name:displayName, ID:name}" -o table
+ ```
+ 
+ ## Bridgecrew's IaC herd of goats
+diff --git a/terraform/azure/aks.tf b/terraform/azure/aks.tf
+deleted file mode 100644
+index ebb613b..0000000
+--- a/terraform/azure/aks.tf
++++ /dev/null
+@@ -1,35 +0,0 @@
+-resource azurerm_kubernetes_cluster "k8s_cluster" {
+-  dns_prefix          = "terragoat-${var.environment}"
+-  location            = var.location
+-  name                = "terragoat-aks-${var.environment}"
+-  resource_group_name = azurerm_resource_group.example.name
+-  identity {
+-    type = "SystemAssigned"
+-  }
+-  default_node_pool {
+-    name       = "default"
+-    vm_size    = "Standard_D2_v2"
+-    node_count = 2
+-  }
+-  addon_profile {
+-    oms_agent {
+-      enabled = false
+-    }
+-    kube_dashboard {
+-      enabled = true
+-    }
+-  }
+-  role_based_access_control {
+-    enabled = false
+-  }
+-  tags = {
+-    git_commit           = "898d5beaec7ffdef6df0d7abecff407362e2a74e"
+-    git_file             = "terraform/azure/aks.tf"
+-    git_last_modified_at = "2020-06-17 12:59:55"
+-    git_last_modified_by = "nimrodkor@gmail.com"
+-    git_modifiers        = "nimrodkor"
+-    git_org              = "bridgecrewio"
+-    git_repo             = "terragoat"
+-    yor_trace            = "6103d111-864e-42e5-899c-1864de281fd1"
+-  }
+-}
+\ No newline at end of file
+diff --git a/terraform/azure/app_service.tf b/terraform/azure/app_service.tf
+index fa4f23e..dfedfe6 100644
+--- a/terraform/azure/app_service.tf
++++ b/terraform/azure/app_service.tf
+@@ -1,11 +1,11 @@
+ resource azurerm_app_service_plan "example" {
+-  name                = "terragoat-app-service-plan-${var.environment}"
++  name                = "tg-app-service-plan-${var.environment}"
+   location            = azurerm_resource_group.example.location
+   resource_group_name = azurerm_resource_group.example.name
+ 
+   sku {
+-    tier = "Dynamic"
+-    size = "S1"
++    tier = "Basic"
++    size = "B1"
+   }
+   tags = {
+     git_commit           = "898d5beaec7ffdef6df0d7abecff407362e2a74e"
+@@ -22,7 +22,7 @@ resource azurerm_app_service_plan "example" {
+ resource azurerm_app_service "app-service1" {
+   app_service_plan_id = azurerm_app_service_plan.example.id
+   location            = var.location
+-  name                = "terragoat-app-service-${var.environment}${random_integer.rnd_int.result}"
++  name                = "tg-app-service-${var.environment}${random_integer.rnd_int.result}"
+   resource_group_name = azurerm_resource_group.example.name
+   https_only          = false
+   site_config {
+@@ -43,7 +43,7 @@ resource azurerm_app_service "app-service1" {
+ resource azurerm_app_service "app-service2" {
+   app_service_plan_id = azurerm_app_service_plan.example.id
+   location            = var.location
+-  name                = "terragoat-app-service-${var.environment}${random_integer.rnd_int.result}"
++  name                = "tg-app-v5-2-${var.environment}${random_integer.rnd_int.result}"
+   resource_group_name = azurerm_resource_group.example.name
+   https_only          = true
+ 
+@@ -61,4 +61,3 @@ resource azurerm_app_service "app-service2" {
+     yor_trace            = "ec8295ab-af68-4cff-b0f1-b0cf5eaf1b75"
+   }
+ }
+-
+diff --git a/terraform/azure/instance.tf b/terraform/azure/instance.tf
+index 225872b..41ed5cd 100644
+--- a/terraform/azure/instance.tf
++++ b/terraform/azure/instance.tf
+@@ -13,7 +13,7 @@ resource azurerm_linux_virtual_machine "linux_machine" {
+   name                            = "terragoat-linux"
+   network_interface_ids           = [azurerm_network_interface.ni_linux.id]
+   resource_group_name             = azurerm_resource_group.example.name
+-  size                            = "Standard_F2"
++  size = "Standard_D2s_v3"
+   disable_password_authentication = false
+   source_image_reference {
+     publisher = "Canonical"
+@@ -48,7 +48,7 @@ resource azurerm_windows_virtual_machine "windows_machine" {
+   name                  = "tg-win"
+   network_interface_ids = [azurerm_network_interface.ni_win.id]
+   resource_group_name   = azurerm_resource_group.example.name
+-  size                  = "Standard_F2"
++  size = "Standard_D2s_v3"
+   os_disk {
+     caching              = "ReadWrite"
+     storage_account_type = "Standard_LRS"
+diff --git a/terraform/azure/key_vault.tf b/terraform/azure/key_vault.tf
+index 7f2be4a..41240d5 100644
+--- a/terraform/azure/key_vault.tf
++++ b/terraform/azure/key_vault.tf
+@@ -6,13 +6,23 @@ resource "azurerm_key_vault" "example" {
+   sku_name            = "premium"
+   access_policy {
+     tenant_id = data.azurerm_client_config.current.tenant_id
+-    object_id = data.azurerm_client_config.current.object_id
++    object_id = var.object_id
+     key_permissions = [
++      "get",
++      "list",
++      "delete",
+       "create",
++      "purge",
++      "recover",
+       "get",
+     ]
+     secret_permissions = [
++      "get",
++      "list",
++      "delete",
+       "set",
++      "purge",
++      "recover",
+     ]
+   }
+   tags = merge({
+diff --git a/terraform/azure/mssql.tf b/terraform/azure/mssql.tf
+index 1c7f1f9..602a337 100644
+--- a/terraform/azure/mssql.tf
++++ b/terraform/azure/mssql.tf
+@@ -1,5 +1,5 @@
+ resource "azurerm_storage_account" "security_storage_account" {
+-  name                      = "securitystorageaccount-${var.environment}${random_integer.rnd_int.result}"
++  name                      = "secsa${var.environment}${random_integer.rnd_int.result}"
+   resource_group_name       = azurerm_resource_group.example.name
+   location                  = azurerm_resource_group.example.location
+   account_tier              = "Standard"
+@@ -24,6 +24,7 @@ resource "azurerm_mssql_server" "mssql1" {
+   version                      = "12.0"
+   administrator_login          = "missadministrator"
+   administrator_login_password = "AdminPassword123!"
++  minimum_tls_version          = "1.2"
+   tags = {
+     git_commit           = "c6f8caa51942284d02465518822685897ad90141"
+     git_file             = "terraform/azure/mssql.tf"
+@@ -43,6 +44,7 @@ resource "azurerm_mssql_server" "mssql2" {
+   version                      = "12.0"
+   administrator_login          = "missadministrator"
+   administrator_login_password = "AdminPassword123!"
++  minimum_tls_version          = "1.2"
+   tags = {
+     git_commit           = "c6f8caa51942284d02465518822685897ad90141"
+     git_file             = "terraform/azure/mssql.tf"
+@@ -62,6 +64,7 @@ resource "azurerm_mssql_server" "mssql3" {
+   version                      = "12.0"
+   administrator_login          = "missadministrator"
+   administrator_login_password = "AdminPassword123!"
++  minimum_tls_version          = "1.2"
+   tags = {
+     git_commit           = "c6f8caa51942284d02465518822685897ad90141"
+     git_file             = "terraform/azure/mssql.tf"
+@@ -81,6 +84,7 @@ resource "azurerm_mssql_server" "mssql4" {
+   version                      = "12.0"
+   administrator_login          = "missadministrator"
+   administrator_login_password = "AdminPassword123!"
++  minimum_tls_version          = "1.2"
+   tags = {
+     git_commit           = "c6f8caa51942284d02465518822685897ad90141"
+     git_file             = "terraform/azure/mssql.tf"
+@@ -100,6 +104,7 @@ resource "azurerm_mssql_server" "mssql5" {
+   version                      = "12.0"
+   administrator_login          = "missadministrator"
+   administrator_login_password = "AdminPassword123!"
++  minimum_tls_version          = "1.2"
+   tags = {
+     git_commit           = "c6f8caa51942284d02465518822685897ad90141"
+     git_file             = "terraform/azure/mssql.tf"
+@@ -119,6 +124,7 @@ resource "azurerm_mssql_server" "mssql6" {
+   version                      = "12.0"
+   administrator_login          = "missadministrator"
+   administrator_login_password = "AdminPassword123!"
++  minimum_tls_version          = "1.2"
+   tags = {
+     git_commit           = "c6f8caa51942284d02465518822685897ad90141"
+     git_file             = "terraform/azure/mssql.tf"
+@@ -138,6 +144,7 @@ resource "azurerm_mssql_server" "mssql7" {
+   version                      = "12.0"
+   administrator_login          = "missadministrator"
+   administrator_login_password = "AdminPassword123!"
++  minimum_tls_version          = "1.2"
+   tags = {
+     git_commit           = "c6f8caa51942284d02465518822685897ad90141"
+     git_file             = "terraform/azure/mssql.tf"
+@@ -154,8 +161,8 @@ resource "azurerm_mssql_server_security_alert_policy" "alertpolicy1" {
+   resource_group_name        = azurerm_resource_group.example.name
+   server_name                = azurerm_mssql_server.mssql1.name
+   state                      = "Enabled"
+-  storage_endpoint           = azurerm_storage_account.security_storage_account.primary_blob_endpoint
+-  storage_account_access_key = azurerm_storage_account.security_storage_account.primary_access_key
++#   storage_endpoint           = azurerm_storage_account.security_storage_account.primary_blob_endpoint
++#   storage_account_access_key = azurerm_storage_account.security_storage_account.primary_access_key
+   disabled_alerts = [
+     "Sql_Injection",
+     "Data_Exfiltration"
+@@ -168,8 +175,8 @@ resource "azurerm_mssql_server_security_alert_policy" "alertpolicy2" {
+   resource_group_name        = azurerm_resource_group.example.name
+   server_name                = azurerm_mssql_server.mssql2.name
+   state                      = "Enabled"
+-  storage_endpoint           = azurerm_storage_account.security_storage_account.primary_blob_endpoint
+-  storage_account_access_key = azurerm_storage_account.security_storage_account.primary_access_key
++#   storage_endpoint           = azurerm_storage_account.security_storage_account.primary_blob_endpoint
++#   storage_account_access_key = azurerm_storage_account.security_storage_account.primary_access_key
+   disabled_alerts = [
+     "Sql_Injection",
+     "Data_Exfiltration"
+@@ -182,8 +189,8 @@ resource "azurerm_mssql_server_security_alert_policy" "alertpolicy3" {
+   resource_group_name        = azurerm_resource_group.example.name
+   server_name                = azurerm_mssql_server.mssql3.name
+   state                      = "Enabled"
+-  storage_endpoint           = azurerm_storage_account.security_storage_account.primary_blob_endpoint
+-  storage_account_access_key = azurerm_storage_account.security_storage_account.primary_access_key
++#   storage_endpoint           = azurerm_storage_account.security_storage_account.primary_blob_endpoint
++#   storage_account_access_key = azurerm_storage_account.security_storage_account.primary_access_key
+   disabled_alerts = [
+     "Sql_Injection",
+     "Data_Exfiltration"
+@@ -196,8 +203,8 @@ resource "azurerm_mssql_server_security_alert_policy" "alertpolicy4" {
+   resource_group_name        = azurerm_resource_group.example.name
+   server_name                = azurerm_mssql_server.mssql4.name
+   state                      = "Enabled"
+-  storage_endpoint           = azurerm_storage_account.security_storage_account.primary_blob_endpoint
+-  storage_account_access_key = azurerm_storage_account.security_storage_account.primary_access_key
++#   storage_endpoint           = azurerm_storage_account.security_storage_account.primary_blob_endpoint
++#   storage_account_access_key = azurerm_storage_account.security_storage_account.primary_access_key
+   disabled_alerts = [
+     "Sql_Injection",
+     "Data_Exfiltration"
+@@ -210,8 +217,8 @@ resource "azurerm_mssql_server_security_alert_policy" "alertpolicy5" {
+   resource_group_name        = azurerm_resource_group.example.name
+   server_name                = azurerm_mssql_server.mssql5.name
+   state                      = "Enabled"
+-  storage_endpoint           = azurerm_storage_account.security_storage_account.primary_blob_endpoint
+-  storage_account_access_key = azurerm_storage_account.security_storage_account.primary_access_key
++#   storage_endpoint           = azurerm_storage_account.security_storage_account.primary_blob_endpoint
++#   storage_account_access_key = azurerm_storage_account.security_storage_account.primary_access_key
+   disabled_alerts = [
+     "Sql_Injection",
+     "Data_Exfiltration"
+@@ -223,8 +230,8 @@ resource "azurerm_mssql_server_security_alert_policy" "alertpolicy6" {
+   resource_group_name        = azurerm_resource_group.example.name
+   server_name                = azurerm_mssql_server.mssql6.name
+   state                      = "Enabled"
+-  storage_endpoint           = azurerm_storage_account.security_storage_account.primary_blob_endpoint
+-  storage_account_access_key = azurerm_storage_account.security_storage_account.primary_access_key
++#   storage_endpoint           = azurerm_storage_account.security_storage_account.primary_blob_endpoint
++#   storage_account_access_key = azurerm_storage_account.security_storage_account.primary_access_key
+   disabled_alerts = [
+     "Sql_Injection",
+     "Data_Exfiltration"
+@@ -237,8 +244,8 @@ resource "azurerm_mssql_server_security_alert_policy" "alertpolicy7" {
+   resource_group_name        = azurerm_resource_group.example.name
+   server_name                = azurerm_mssql_server.mssql7.name
+   state                      = "Enabled"
+-  storage_endpoint           = azurerm_storage_account.security_storage_account.primary_blob_endpoint
+-  storage_account_access_key = azurerm_storage_account.security_storage_account.primary_access_key
++#   storage_endpoint           = azurerm_storage_account.security_storage_account.primary_blob_endpoint
++#   storage_account_access_key = azurerm_storage_account.security_storage_account.primary_access_key
+   disabled_alerts = [
+     "Sql_Injection",
+     "Data_Exfiltration"
+diff --git a/terraform/azure/networking.tf b/terraform/azure/networking.tf
+index ab01c60..ebe8992 100644
+--- a/terraform/azure/networking.tf
++++ b/terraform/azure/networking.tf
+@@ -106,40 +106,40 @@ resource azurerm_network_security_group "bad_sg" {
+   }
+ }
+ 
+-resource azurerm_network_watcher "network_watcher" {
+-  location            = var.location
+-  name                = "terragoat-network-watcher-${var.environment}"
+-  resource_group_name = azurerm_resource_group.example.name
+-  tags = {
+-    git_commit           = "898d5beaec7ffdef6df0d7abecff407362e2a74e"
+-    git_file             = "terraform/azure/networking.tf"
+-    git_last_modified_at = "2020-06-17 12:59:55"
+-    git_last_modified_by = "nimrodkor@gmail.com"
+-    git_modifiers        = "nimrodkor"
+-    git_org              = "bridgecrewio"
+-    git_repo             = "terragoat"
+-    yor_trace            = "3da368fc-723f-43d2-8e82-08dcc91e5094"
+-  }
+-}
+-
+-resource azurerm_network_watcher_flow_log "flow_log" {
+-  enabled                   = false
+-  network_security_group_id = azurerm_network_security_group.bad_sg.id
+-  network_watcher_name      = azurerm_network_watcher.network_watcher.name
+-  resource_group_name       = azurerm_resource_group.example.name
+-  storage_account_id        = azurerm_storage_account.example.id
+-  retention_policy {
+-    enabled = false
+-    days    = 10
+-  }
+-  tags = {
+-    git_commit           = "898d5beaec7ffdef6df0d7abecff407362e2a74e"
+-    git_file             = "terraform/azure/networking.tf"
+-    git_last_modified_at = "2020-06-17 12:59:55"
+-    git_last_modified_by = "nimrodkor@gmail.com"
+-    git_modifiers        = "nimrodkor"
+-    git_org              = "bridgecrewio"
+-    git_repo             = "terragoat"
+-    yor_trace            = "33a7212e-7f1a-49fc-af73-8e525c5546ec"
+-  }
+-}
+\ No newline at end of file
++# resource azurerm_network_watcher "network_watcher" {
++#   location            = var.location
++#   name                = "terragoat-network-watcher-${var.environment}"
++#   resource_group_name = azurerm_resource_group.example.name
++#   tags = {
++#     git_commit           = "898d5beaec7ffdef6df0d7abecff407362e2a74e"
++#     git_file             = "terraform/azure/networking.tf"
++#     git_last_modified_at = "2020-06-17 12:59:55"
++#     git_last_modified_by = "nimrodkor@gmail.com"
++#     git_modifiers        = "nimrodkor"
++#     git_org              = "bridgecrewio"
++#     git_repo             = "terragoat"
++#     yor_trace            = "3da368fc-723f-43d2-8e82-08dcc91e5094"
++#   }
++# }
++# 
++# resource azurerm_network_watcher_flow_log "flow_log" {
++#   enabled                   = false
++#   network_security_group_id = azurerm_network_security_group.bad_sg.id
++#   network_watcher_name      = azurerm_network_watcher.network_watcher.name
++#   resource_group_name       = azurerm_resource_group.example.name
++#   storage_account_id        = azurerm_storage_account.example.id
++#   retention_policy {
++#     enabled = false
++#     days    = 10
++#   }
++#   tags = {
++#     git_commit           = "898d5beaec7ffdef6df0d7abecff407362e2a74e"
++#     git_file             = "terraform/azure/networking.tf"
++#     git_last_modified_at = "2020-06-17 12:59:55"
++#     git_last_modified_by = "nimrodkor@gmail.com"
++#     git_modifiers        = "nimrodkor"
++#     git_org              = "bridgecrewio"
++#     git_repo             = "terragoat"
++#     yor_trace            = "33a7212e-7f1a-49fc-af73-8e525c5546ec"
++#   }
++# }
+\ No newline at end of file
+diff --git a/terraform/azure/policies.tf b/terraform/azure/policies.tf
+index 76ffd9f..58d9f3a 100644
+--- a/terraform/azure/policies.tf
++++ b/terraform/azure/policies.tf
+@@ -36,7 +36,7 @@ PARAMETERS
+ }
+ 
+ resource "azurerm_policy_assignment" "example" {
+-  name                 = "terragoat-policy-assignment-${var.environment}"
++  name                 = "tg-policy-assignment-${var.environment}"
+   scope                = "/subscriptions/${data.azurerm_client_config.current.subscription_id}"
+   policy_definition_id = azurerm_policy_definition.policy-res.id
+   description          = "Policy Assignment created via an Acceptance Test"
+diff --git a/terraform/azure/provider.tf b/terraform/azure/provider.tf
+index 645c045..67b4c09 100644
+--- a/terraform/azure/provider.tf
++++ b/terraform/azure/provider.tf
+@@ -1,6 +1,6 @@
+ provider "azurerm" {
+   subscription_id = var.subscription_id
+-  version = ">= 2.0.0"
++  version = "2.99.0"
+   features {}
+ }
+ 
+diff --git a/terraform/azure/sql.tf b/terraform/azure/sql.tf
+index c466020..4f55451 100644
+--- a/terraform/azure/sql.tf
++++ b/terraform/azure/sql.tf
+@@ -32,8 +32,8 @@ resource "azurerm_mssql_server_security_alert_policy" "example" {
+   resource_group_name        = azurerm_resource_group.example.name
+   server_name                = azurerm_sql_server.example.name
+   state                      = "Enabled"
+-  storage_endpoint           = azurerm_storage_account.example.primary_blob_endpoint
+-  storage_account_access_key = azurerm_storage_account.example.primary_access_key
++#   storage_endpoint           = azurerm_storage_account.example.primary_blob_endpoint
++#   storage_account_access_key = azurerm_storage_account.example.primary_access_key
+   disabled_alerts = [
+     "Sql_Injection",
+     "Data_Exfiltration"
+@@ -41,70 +41,73 @@ resource "azurerm_mssql_server_security_alert_policy" "example" {
+   retention_days = 20
+ }
+ 
+-resource "azurerm_mysql_server" "example" {
+-  name                = "terragoat-mysql-${var.environment}${random_integer.rnd_int.result}"
+-  location            = azurerm_resource_group.example.location
+-  resource_group_name = azurerm_resource_group.example.name
+-
+-  administrator_login          = "terragoat-${var.environment}"
+-  administrator_login_password = random_string.password.result
++# resource "azurerm_mysql_server" "example" {
++#   name                = "terragoat-mysql-${var.environment}${random_integer.rnd_int.result}"
++#   location            = azurerm_resource_group.example.location
++#   resource_group_name = azurerm_resource_group.example.name
++# 
++#   administrator_login          = "terragoat-${var.environment}"
++#   administrator_login_password = random_string.password.result
++# 
++#   sku_name   = "GP_Gen5_2"
++#   storage_mb = 5120
++#   version    = "5.7"
++# 
++#   auto_grow_enabled                 = true
++#   backup_retention_days             = 7
++#   infrastructure_encryption_enabled = true
++#   public_network_access_enabled     = true
++#   ssl_enforcement_enabled           = false
++#   tags = {
++#     git_commit           = "81738b80d571fa3034633690d13ffb460e1e7dea"
++#     git_file             = "terraform/azure/sql.tf"
++#     git_last_modified_at = "2020-06-19 21:14:50"
++#     git_last_modified_by = "Adin.Ermie@outlook.com"
++#     git_modifiers        = "Adin.Ermie/nimrodkor"
++#     git_org              = "bridgecrewio"
++#     git_repo             = "terragoat"
++#     yor_trace            = "1ac18c16-09a4-41c9-9a66-6f514050178e"
++#   }
++# }
+ 
+-  sku_name   = "B_Gen5_2"
+-  storage_mb = 5120
+-  version    = "5.7"
+-
+-  auto_grow_enabled                 = true
+-  backup_retention_days             = 7
+-  infrastructure_encryption_enabled = true
+-  public_network_access_enabled     = true
+-  ssl_enforcement_enabled           = false
+-  tags = {
+-    git_commit           = "81738b80d571fa3034633690d13ffb460e1e7dea"
+-    git_file             = "terraform/azure/sql.tf"
+-    git_last_modified_at = "2020-06-19 21:14:50"
+-    git_last_modified_by = "Adin.Ermie@outlook.com"
+-    git_modifiers        = "Adin.Ermie/nimrodkor"
+-    git_org              = "bridgecrewio"
+-    git_repo             = "terragoat"
+-    yor_trace            = "1ac18c16-09a4-41c9-9a66-6f514050178e"
+-  }
+-}
++# https://techcommunity.microsoft.com/blog/adformysql/azure-database-for-mysql---single-server-retirement---key-updates-and-migration-/4055198
+ 
+-resource "azurerm_postgresql_server" "example" {
+-  name                         = "terragoat-postgresql-${var.environment}${random_integer.rnd_int.result}"
+-  location                     = azurerm_resource_group.example.location
+-  resource_group_name          = azurerm_resource_group.example.name
+-  sku_name                     = "B_Gen5_2"
+-  storage_mb                   = 5120
+-  backup_retention_days        = 7
+-  geo_redundant_backup_enabled = false
+-  auto_grow_enabled            = true
+-  administrator_login          = "terragoat"
+-  administrator_login_password = "Aa12345678"
+-  version                      = "9.5"
+-  ssl_enforcement_enabled      = false
+-  tags = {
+-    git_commit           = "81738b80d571fa3034633690d13ffb460e1e7dea"
+-    git_file             = "terraform/azure/sql.tf"
+-    git_last_modified_at = "2020-06-19 21:14:50"
+-    git_last_modified_by = "Adin.Ermie@outlook.com"
+-    git_modifiers        = "Adin.Ermie/nimrodkor"
+-    git_org              = "bridgecrewio"
+-    git_repo             = "terragoat"
+-    yor_trace            = "9eae126d-9404-4511-9c32-2243457df459"
+-  }
+-}
+-
+-resource "azurerm_postgresql_configuration" "thrtottling_config" {
+-  name                = "connection_throttling"
+-  resource_group_name = azurerm_resource_group.example.name
+-  server_name         = azurerm_postgresql_server.example.name
+-  value               = "off"
+-}
+-
+-resource "azurerm_postgresql_configuration" "example" {
+-  name                = "log_checkpoints"
+-  resource_group_name = azurerm_resource_group.example.name
+-  server_name         = azurerm_postgresql_server.example.name
+-  value               = "off"
+-}
+\ No newline at end of file
++# resource "azurerm_postgresql_server" "example" {
++#   name                         = "terragoat-postgresql-${var.environment}${random_integer.rnd_int.result}"
++#   location                     = azurerm_resource_group.example.location
++#   resource_group_name          = azurerm_resource_group.example.name
++#   sku_name                     = "B_Gen5_2"
++#   storage_mb                   = 5120
++#   backup_retention_days        = 7
++#   geo_redundant_backup_enabled = false
++#   auto_grow_enabled            = true
++#   administrator_login          = "terragoat"
++#   administrator_login_password = "Aa12345678"
++#   version                      = "9.5"
++#   ssl_enforcement_enabled      = false
++#   tags = {
++#     git_commit           = "81738b80d571fa3034633690d13ffb460e1e7dea"
++#     git_file             = "terraform/azure/sql.tf"
++#     git_last_modified_at = "2020-06-19 21:14:50"
++#     git_last_modified_by = "Adin.Ermie@outlook.com"
++#     git_modifiers        = "Adin.Ermie/nimrodkor"
++#     git_org              = "bridgecrewio"
++#     git_repo             = "terragoat"
++#     yor_trace            = "9eae126d-9404-4511-9c32-2243457df459"
++#   }
++# }
++# 
++# resource "azurerm_postgresql_configuration" "thrtottling_config" {
++#   name                = "connection_throttling"
++#   resource_group_name = azurerm_resource_group.example.name
++#   server_name         = azurerm_postgresql_server.example.name
++#   value               = "off"
++# }
++# 
++# resource "azurerm_postgresql_configuration" "example" {
++#   name                = "log_checkpoints"
++#   resource_group_name = azurerm_resource_group.example.name
++#   server_name         = azurerm_postgresql_server.example.name
++#   value               = "off"
++# }
++# https://www.google.com/search?q=https://techcommunity.microsoft.com/blog/adforpostgresql/retiring-azure-postgresql-single-server-in-march-2025/3783783
+diff --git a/terraform/azure/storage.tf b/terraform/azure/storage.tf
+index 8d68862..d58e52e 100644
+--- a/terraform/azure/storage.tf
++++ b/terraform/azure/storage.tf
+@@ -65,5 +65,7 @@ resource "azurerm_storage_account_network_rules" "test" {
+ 
+   default_action = "Deny"
+   ip_rules       = ["127.0.0.1"]
++#   bypass         = ["Metrics", "AzureServices"]
++# CKV_AZURE_36
+   bypass         = ["Metrics"]
+ }
+diff --git a/terraform/azure/variables.tf b/terraform/azure/variables.tf
+index 0f779c5..77a673a 100644
+--- a/terraform/azure/variables.tf
++++ b/terraform/azure/variables.tf
+@@ -6,10 +6,15 @@ variable "subscription_id" {
+ 
+ variable "location" {
+   type    = string
+-  default = "East US"
++  default = "swedencentral"
+ }
+ 
+ variable "environment" {
+   default     = "dev"
+   description = "Must be all lowercase letters or numbers"
+-}
+\ No newline at end of file
++}
++
++variable "object_id" {
++  type        = string
++  description = "User Object ID for Key Vault"
++}
